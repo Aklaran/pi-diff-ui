@@ -256,4 +256,158 @@ describe('diff-state', () => {
       expect(changed).toContain('file3.txt');
     });
   });
+
+  describe('serialization', () => {
+    describe('toJSON', () => {
+      it('should serialize empty state', () => {
+        const json = state.toJSON();
+        
+        expect(json.version).toBe(1);
+        expect(json.files).toHaveLength(0);
+      });
+
+      it('should serialize tracked files', () => {
+        state.trackFile('file1.txt', 'original1', 'current1');
+        state.trackFile('file2.txt', 'original2', 'current2');
+        
+        const json = state.toJSON();
+        
+        expect(json.version).toBe(1);
+        expect(json.files).toHaveLength(2);
+        expect(json.files[0]).toEqual({
+          path: 'file1.txt',
+          originalContent: 'original1',
+          currentContent: 'current1',
+        });
+        expect(json.files[1]).toEqual({
+          path: 'file2.txt',
+          originalContent: 'original2',
+          currentContent: 'current2',
+        });
+      });
+
+      it('should include unchanged files', () => {
+        state.trackFile('changed.txt', 'a', 'b');
+        state.trackFile('unchanged.txt', 'same', 'same');
+        
+        const json = state.toJSON();
+        
+        expect(json.files).toHaveLength(2);
+        const unchangedFile = json.files.find(f => f.path === 'unchanged.txt');
+        expect(unchangedFile).toBeDefined();
+        expect(unchangedFile?.originalContent).toBe('same');
+        expect(unchangedFile?.currentContent).toBe('same');
+      });
+    });
+
+    describe('fromJSON', () => {
+      it('should restore empty state', () => {
+        const json = { version: 1 as const, files: [] };
+        const restored = DiffState.fromJSON(json);
+        
+        expect(restored.getChangedFiles()).toHaveLength(0);
+        expect(restored.pendingCount).toBe(0);
+      });
+
+      it('should restore state correctly', () => {
+        const json = {
+          version: 1 as const,
+          files: [
+            { path: 'file1.txt', originalContent: 'orig1', currentContent: 'curr1' },
+            { path: 'file2.txt', originalContent: 'orig2', currentContent: 'curr2' },
+          ],
+        };
+        const restored = DiffState.fromJSON(json);
+        
+        expect(restored.isTracked('file1.txt')).toBe(true);
+        expect(restored.isTracked('file2.txt')).toBe(true);
+        
+        const diff1 = restored.getFileDiff('file1.txt');
+        expect(diff1).toBeDefined();
+        expect(diff1?.filePath).toBe('file1.txt');
+        
+        const diff2 = restored.getFileDiff('file2.txt');
+        expect(diff2).toBeDefined();
+        expect(diff2?.filePath).toBe('file2.txt');
+      });
+
+      it('should preserve changed files after fromJSON', () => {
+        const json = {
+          version: 1 as const,
+          files: [
+            { path: 'changed.txt', originalContent: 'a', currentContent: 'b' },
+            { path: 'unchanged.txt', originalContent: 'same', currentContent: 'same' },
+          ],
+        };
+        const restored = DiffState.fromJSON(json);
+        
+        const changed = restored.getChangedFiles();
+        expect(changed).toHaveLength(1);
+        expect(changed).toContain('changed.txt');
+        expect(changed).not.toContain('unchanged.txt');
+      });
+
+      it('should work correctly with getChangedFiles after fromJSON', () => {
+        const json = {
+          version: 1 as const,
+          files: [
+            { path: 'file1.txt', originalContent: 'line1\n', currentContent: 'line1\nline2\n' },
+            { path: 'file2.txt', originalContent: 'old\n', currentContent: 'new\n' },
+          ],
+        };
+        const restored = DiffState.fromJSON(json);
+        
+        const changed = restored.getChangedFiles();
+        expect(changed).toHaveLength(2);
+        expect(changed).toContain('file1.txt');
+        expect(changed).toContain('file2.txt');
+      });
+    });
+
+    describe('round-trip', () => {
+      it('should preserve all data through round-trip', () => {
+        state.trackFile('file1.txt', 'original1', 'current1');
+        state.trackFile('file2.txt', 'original2', 'current2');
+        state.trackFile('file3.txt', 'same', 'same');
+        
+        const json = state.toJSON();
+        const restored = DiffState.fromJSON(json);
+        
+        // Check all files are tracked
+        expect(restored.isTracked('file1.txt')).toBe(true);
+        expect(restored.isTracked('file2.txt')).toBe(true);
+        expect(restored.isTracked('file3.txt')).toBe(true);
+        
+        // Check changed files match
+        const originalChanged = state.getChangedFiles();
+        const restoredChanged = restored.getChangedFiles();
+        expect(restoredChanged).toHaveLength(originalChanged.length);
+        expect(restoredChanged.sort()).toEqual(originalChanged.sort());
+        
+        // Check pending count matches
+        expect(restored.pendingCount).toBe(state.pendingCount);
+        
+        // Check diffs match
+        const diff1 = restored.getFileDiff('file1.txt');
+        const originalDiff1 = state.getFileDiff('file1.txt');
+        expect(diff1?.additions).toBe(originalDiff1?.additions);
+        expect(diff1?.deletions).toBe(originalDiff1?.deletions);
+      });
+
+      it('should preserve diffs with modified files', () => {
+        state.trackFile('test.txt', 'line1\nline2\n', 'line1\nline2\nline3\n');
+        
+        const json = state.toJSON();
+        const restored = DiffState.fromJSON(json);
+        
+        const diff = restored.getFileDiff('test.txt');
+        expect(diff).toBeDefined();
+        expect(diff?.additions).toBe(1);
+        expect(diff?.deletions).toBe(0);
+        
+        const addedLines = diff!.hunks.filter(h => h.type === 'added');
+        expect(addedLines.some(l => l.content === 'line3')).toBe(true);
+      });
+    });
+  });
 });

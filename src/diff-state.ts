@@ -5,6 +5,15 @@ export interface FileSnapshot {
   currentContent: string;
 }
 
+export interface SerializedDiffState {
+  version: 1;
+  files: Array<{
+    path: string;
+    originalContent: string;
+    currentContent: string;
+  }>;
+}
+
 export class DiffState {
   private snapshots: Map<string, FileSnapshot> = new Map();
 
@@ -95,5 +104,45 @@ export class DiffState {
    */
   get pendingCount(): number {
     return this.getChangedFiles().length;
+  }
+
+  /**
+   * Serialize the diff state to JSON
+   */
+  toJSON(): SerializedDiffState {
+    const files: Array<{
+      path: string;
+      originalContent: string;
+      currentContent: string;
+    }> = [];
+
+    for (const [path, snapshot] of this.snapshots.entries()) {
+      files.push({
+        path,
+        originalContent: snapshot.originalContent,
+        currentContent: snapshot.currentContent,
+      });
+    }
+
+    return {
+      version: 1,
+      files,
+    };
+  }
+
+  /**
+   * Restore a DiffState from serialized data
+   */
+  static fromJSON(data: SerializedDiffState): DiffState {
+    const state = new DiffState();
+    
+    for (const file of data.files) {
+      state.snapshots.set(file.path, {
+        originalContent: file.originalContent,
+        currentContent: file.currentContent,
+      });
+    }
+
+    return state;
   }
 }

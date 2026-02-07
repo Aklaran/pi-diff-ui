@@ -4,7 +4,7 @@ export type { DiffLine, FileDiff } from "./diff-engine.js";
 
 // State
 export { DiffState } from "./diff-state.js";
-export type { FileSnapshot } from "./diff-state.js";
+export type { FileSnapshot, SerializedDiffState } from "./diff-state.js";
 
 // Views
 export { InlineDiffView } from "./inline-view.js";
@@ -26,6 +26,10 @@ export type {
   OverlayHandler,
   OverlayOptions,
 } from "./overlay.js";
+
+// Picker
+export { createPickerHandler } from "./picker.js";
+export type { PickerItem, PickerCallbacks } from "./picker.js";
 
 // Constants
 export {
