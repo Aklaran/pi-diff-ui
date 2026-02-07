@@ -1,5 +1,5 @@
-import { DiffState } from './diff-state';
-import { FileDiff } from './diff-engine';
+import { DiffState } from './diff-state.js';
+import { FileDiff } from './diff-engine.js';
 
 export interface ModalFileEntry {
   path: string;

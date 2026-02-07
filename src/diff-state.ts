@@ -1,4 +1,4 @@
-import { computeDiff, FileDiff } from './diff-engine';
+import { computeDiff, FileDiff } from './diff-engine.js';
 
 export interface FileSnapshot {
   originalContent: string;

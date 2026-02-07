@@ -1,22 +1,22 @@
 // Core
-export { computeDiff } from "./diff-engine";
-export type { DiffLine, FileDiff } from "./diff-engine";
+export { computeDiff } from "./diff-engine.js";
+export type { DiffLine, FileDiff } from "./diff-engine.js";
 
 // State
-export { DiffState } from "./diff-state";
-export type { FileSnapshot } from "./diff-state";
+export { DiffState } from "./diff-state.js";
+export type { FileSnapshot } from "./diff-state.js";
 
 // Views
-export { InlineDiffView } from "./inline-view";
-export type { HighlightFn } from "./inline-view";
-export { DiffViewController } from "./diff-view-controller";
+export { InlineDiffView } from "./inline-view.js";
+export type { HighlightFn } from "./inline-view.js";
+export { DiffViewController } from "./diff-view-controller.js";
 
 // Modal
-export { DiffReviewModal } from "./modal";
-export type { ModalFileEntry } from "./modal";
+export { DiffReviewModal } from "./modal.js";
+export type { ModalFileEntry } from "./modal.js";
 
 // Overlay
-export { createOverlayHandler } from "./overlay";
+export { createOverlayHandler } from "./overlay.js";
 export type {
   OverlayTui,
   OverlayTheme,
@@ -25,7 +25,7 @@ export type {
   OverlayCallbacks,
   OverlayHandler,
   OverlayOptions,
-} from "./overlay";
+} from "./overlay.js";
 
 // Constants
 export {
@@ -36,4 +36,4 @@ export {
   OVERLAY_HEIGHT_PCT,
   ANSI_HIGHLIGHT_BG,
   ANSI_HIGHLIGHT_BG_OFF,
-} from "./constants";
+} from "./constants.js";

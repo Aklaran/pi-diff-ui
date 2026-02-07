@@ -4,8 +4,17 @@
   "private": true,
   "type": "module",
   "description": "Shared diff rendering UI for Pi extensions",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -13,7 +22,8 @@
     "diff": "^7.0.0"
   },
   "devDependencies": {
-    "vitest": "^3.0.0",
-    "@types/diff": "^7.0.0"
+    "@types/diff": "^7.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
   }
 }

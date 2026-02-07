@@ -1,5 +1,5 @@
-import type { FileDiff, DiffLine } from './diff-engine';
-import { InlineDiffView, type HighlightFn } from './inline-view';
+import type { FileDiff, DiffLine } from './diff-engine.js';
+import { InlineDiffView, type HighlightFn } from './inline-view.js';
 
 export class DiffViewController {
   private inlineView: InlineDiffView;

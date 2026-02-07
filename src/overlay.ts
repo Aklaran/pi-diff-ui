@@ -1,6 +1,6 @@
-import { DiffReviewModal } from "./modal";
-import { DiffViewController } from "./diff-view-controller";
-import type { DiffLine } from "./diff-engine";
+import { DiffReviewModal } from "./modal.js";
+import { DiffViewController } from "./diff-view-controller.js";
+import type { DiffLine } from "./diff-engine.js";
 
 /**
  * Minimal TUI interface needed by the overlay.

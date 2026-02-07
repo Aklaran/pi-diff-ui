@@ -1,4 +1,4 @@
-import type { FileDiff, DiffLine } from './diff-engine';
+import type { FileDiff, DiffLine } from './diff-engine.js';
 
 export type HighlightFn = (code: string, filePath: string) => string;
 
