@@ -1,0 +1,19 @@
+{
+  "name": "pi-diff-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared diff rendering UI for Pi extensions",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "@types/diff": "^7.0.0"
+  }
+}
