@@ -1,5 +1,8 @@
 import type { OverlayTui, OverlayTheme, OverlayKeyUtils, OverlayHandler } from "./overlay.js";
 
+/**
+ * A selectable item in the picker list.
+ */
 export interface PickerItem {
   id: string;
   label: string;
@@ -7,11 +10,19 @@ export interface PickerItem {
   meta?: string;  // right-aligned info like "3 files, +45/-12"
 }
 
+/**
+ * Callbacks for picker user interactions.
+ */
 export interface PickerCallbacks {
   onSelect: (item: PickerItem) => void;
   onCancel: () => void;
+  /** Called when user presses 'd' to dismiss an item. Return true if the item was removed. */
+  onDismiss?: (item: PickerItem) => boolean;
 }
 
+/**
+ * Configuration options for the picker overlay.
+ */
 export interface PickerOptions {
   title?: string;
 }
@@ -117,8 +128,17 @@ export function createPickerHandler(
         output.push(padLine(line));
       }
 
-      // Pad to fill fixed height
-      while (output.length < targetHeight - 1) {
+      // Pad to fill fixed height (reserve 1 line for help text, 1 for bottom border)
+      while (output.length < targetHeight - 2) {
+        output.push(emptyLine());
+      }
+
+      // Help line
+      if (items.length > 0) {
+        const dismissHint = callbacks.onDismiss ? "  d dismiss" : "";
+        const helpText = theme.fg("dim", `↑↓ navigate  Enter select${dismissHint}  Esc close`);
+        output.push(padLine(helpText));
+      } else {
         output.push(emptyLine());
       }
 
@@ -158,6 +178,23 @@ export function createPickerHandler(
       // Selection
       if (matchesKey(data, Key.enter)) {
         callbacks.onSelect(items[cursorIndex]);
+        return true;
+      }
+
+      // Dismiss
+      if (data === "d" && callbacks.onDismiss) {
+        const removed = callbacks.onDismiss(items[cursorIndex]);
+        if (removed) {
+          items.splice(cursorIndex, 1);
+          if (items.length === 0) {
+            callbacks.onCancel();
+            return true;
+          }
+          if (cursorIndex >= items.length) {
+            cursorIndex = items.length - 1;
+          }
+          tui.requestRender();
+        }
         return true;
       }
 

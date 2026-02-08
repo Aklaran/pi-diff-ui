@@ -370,4 +370,127 @@ describe("createPickerHandler", () => {
       expect(rendered).toContain("**> Item 1**");
     });
   });
+
+  describe("dismiss (d key)", () => {
+    it("calls onDismiss with the selected item", () => {
+      const onDismiss = vi.fn().mockReturnValue(true);
+      const items: PickerItem[] = [
+        { id: "1", label: "First" },
+        { id: "2", label: "Second" },
+      ];
+      const firstItem = items[0];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      handler.handleInput("d");
+
+      expect(onDismiss).toHaveBeenCalledWith(firstItem);
+    });
+
+    it("removes the item from the list when onDismiss returns true", () => {
+      const onDismiss = vi.fn().mockReturnValue(true);
+      const items: PickerItem[] = [
+        { id: "1", label: "First" },
+        { id: "2", label: "Second" },
+      ];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      handler.handleInput("d");
+
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).not.toContain("First");
+      expect(rendered).toContain("Second");
+    });
+
+    it("does not remove item when onDismiss returns false", () => {
+      const onDismiss = vi.fn().mockReturnValue(false);
+      const items: PickerItem[] = [
+        { id: "1", label: "First" },
+        { id: "2", label: "Second" },
+      ];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      handler.handleInput("d");
+
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).toContain("First");
+    });
+
+    it("calls onCancel when last item is dismissed", () => {
+      const onDismiss = vi.fn().mockReturnValue(true);
+      const items: PickerItem[] = [{ id: "1", label: "Only" }];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      handler.handleInput("d");
+
+      expect(onCancel).toHaveBeenCalled();
+    });
+
+    it("clamps cursor when dismissing last item in list", () => {
+      const onDismiss = vi.fn().mockReturnValue(true);
+      const items: PickerItem[] = [
+        { id: "1", label: "First" },
+        { id: "2", label: "Second" },
+        { id: "3", label: "Third" },
+      ];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      // Navigate to last item
+      handler.handleInput("j");
+      handler.handleInput("j");
+      // Dismiss it
+      handler.handleInput("d");
+
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).toContain("**> Second**");
+    });
+
+    it("does nothing when onDismiss is not provided", () => {
+      const items: PickerItem[] = [
+        { id: "1", label: "First" },
+        { id: "2", label: "Second" },
+      ];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, callbacks);
+
+      const result = handler.handleInput("d");
+
+      expect(result).toBe(false);
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).toContain("First");
+    });
+
+    it("shows dismiss hint in help text when onDismiss is provided", () => {
+      const onDismiss = vi.fn().mockReturnValue(true);
+      const items: PickerItem[] = [{ id: "1", label: "Item" }];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, {
+        ...callbacks,
+        onDismiss,
+      });
+
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).toContain("d dismiss");
+    });
+
+    it("does not show dismiss hint when onDismiss is not provided", () => {
+      const items: PickerItem[] = [{ id: "1", label: "Item" }];
+      const handler = createPickerHandler(items, tui, theme, keyUtils, callbacks);
+
+      const rendered = handler.render(80).join("\n");
+      expect(rendered).not.toContain("d dismiss");
+    });
+  });
 });
