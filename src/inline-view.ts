@@ -119,26 +119,21 @@ export class InlineDiffView {
   }
 
   scrollUp(lines: number = 1): void {
-    this._scrollOffset = Math.max(0, this._scrollOffset - lines);
     this.moveCursor(-lines);
   }
 
   scrollDown(lines: number = 1): void {
-    this._scrollOffset = Math.min(
-      Math.max(0, this.renderedLines.length),
-      this._scrollOffset + lines
-    );
     this.moveCursor(lines);
   }
 
   scrollToTop(): void {
-    this._scrollOffset = 0;
     this._cursorLine = 0;
+    this._scrollOffset = 0;
   }
 
   scrollToBottom(): void {
-    this._scrollOffset = Math.max(0, this.renderedLines.length);
     this._cursorLine = Math.max(0, this.renderedLines.length - 1);
+    this._scrollOffset = Math.max(0, this.renderedLines.length);
   }
 
   get totalLines(): number {
@@ -150,18 +145,29 @@ export class InlineDiffView {
   }
 
   render(width: number, visibleHeight: number): string[] {
-    // Auto-scroll to keep cursor visible
-    if (this._cursorLine >= this._scrollOffset + visibleHeight) {
-      this._scrollOffset = this._cursorLine - visibleHeight + 1;
-    }
-    if (this._cursorLine < this._scrollOffset) {
-      this._scrollOffset = this._cursorLine;
+    // Scroll margin: cursor moves freely within the viewport. When it gets
+    // within SCROLL_MARGIN lines of the edge, the viewport scrolls to maintain
+    // the buffer. At file boundaries the cursor can reach the very edge.
+    const SCROLL_MARGIN = 5;
+    const margin = Math.min(SCROLL_MARGIN, Math.floor((visibleHeight - 1) / 2));
+
+    // Only scroll if cursor is outside the viewport entirely, or has entered
+    // the margin zone from the appropriate direction
+    const topBound = this._scrollOffset + margin;
+    const bottomBound = this._scrollOffset + visibleHeight - 1 - margin;
+
+    if (this._cursorLine > bottomBound) {
+      // Cursor below safe zone — scroll down to restore margin
+      this._scrollOffset = this._cursorLine - visibleHeight + 1 + margin;
+    } else if (this._cursorLine < topBound) {
+      // Cursor above safe zone — scroll up to restore margin
+      this._scrollOffset = this._cursorLine - margin;
     }
     
-    // Clamp scroll offset to ensure we can fill visibleHeight if possible
+    // Clamp scroll offset to valid range
     const maxOffset = Math.max(0, this.renderedLines.length - visibleHeight);
-    const offset = Math.min(this._scrollOffset, maxOffset);
-    this._scrollOffset = offset;
+    this._scrollOffset = Math.max(0, Math.min(this._scrollOffset, maxOffset));
+    const offset = this._scrollOffset;
 
     const endIndex = Math.min(offset + visibleHeight, this.renderedLines.length);
     const visibleLines = this.renderedLines.slice(offset, endIndex);
@@ -179,10 +185,10 @@ export class InlineDiffView {
       
       // Highlight cursor line or visual selection with subtle dark gray background
       if (inVisualRange || lineIndex === this._cursorLine) {
-        // Use 256-color dark gray background (236 = #303030) — subtle, won't clash with syntax colors
+        // Use 256-color dark gray background (238 = #444444) — visible but won't clash with syntax colors
         // Wrap entire line: set bg at start, reset bg before final reset
         content = content.replace(/\x1b\[0m$/, '\x1b[49m\x1b[0m');
-        content = `\x1b[48;5;236m${content}`;
+        content = `\x1b[48;5;238m${content}`;
       }
       
       return this.truncateToWidth(content, width);

@@ -164,38 +164,49 @@ describe('InlineDiffView', () => {
       };
     });
 
-    it('scrollDown moves the visible window', () => {
+    it('scrollDown moves cursor and viewport scrolls on render', () => {
       const view = new InlineDiffView(largeDiff);
       const initialLines = view.render(80, 10);
       
       expect(view.scrollOffset).toBe(0);
       expect(initialLines[0]).toContain('line 1');
       
+      // Move cursor down — stays within margin, no scroll
       view.scrollDown(5);
-      const scrolledLines = view.render(80, 10);
+      expect(view.cursorLine).toBe(5);
+      view.render(80, 10);
+      // Cursor at 5 with margin 4 (min(5, floor(9/2))), safe zone 4-5: no scroll
+      expect(view.scrollOffset).toBe(0);
       
-      expect(view.scrollOffset).toBe(5);
-      expect(scrolledLines[0]).toContain('line 6');
+      // Move past the margin — viewport scrolls
+      view.scrollDown(1);
+      expect(view.cursorLine).toBe(6);
+      const scrolledLines = view.render(80, 10);
+      // Cursor at 6 > bottomBound(5) → scrollOffset = 6 - 10 + 1 + 4 = 1
+      expect(view.scrollOffset).toBe(1);
+      expect(scrolledLines[0]).toContain('line 2');
     });
 
-    it('scrollUp moves the visible window', () => {
+    it('scrollUp moves cursor and viewport scrolls on render', () => {
       const view = new InlineDiffView(largeDiff);
       
-      view.scrollDown(10);
-      expect(view.scrollOffset).toBe(10);
+      // Move to line 20 then back
+      view.scrollDown(20);
+      view.render(80, 10);
       
       view.scrollUp(5);
-      expect(view.scrollOffset).toBe(5);
+      expect(view.cursorLine).toBe(15);
       
       const lines = view.render(80, 10);
-      expect(lines[0]).toContain('line 6');
+      // Cursor at 15, viewport should have cursor within margins
+      expect(lines.some(line => line.includes('line 16'))).toBe(true);
     });
 
     it('scrollDown defaults to 1 line', () => {
       const view = new InlineDiffView(largeDiff);
       
       view.scrollDown();
-      expect(view.scrollOffset).toBe(1);
+      expect(view.cursorLine).toBe(1);
     });
 
     it('scrollUp defaults to 1 line', () => {
@@ -203,14 +214,48 @@ describe('InlineDiffView', () => {
       
       view.scrollDown(5);
       view.scrollUp();
-      expect(view.scrollOffset).toBe(4);
+      expect(view.cursorLine).toBe(4);
     });
 
-    it('scroll clamps at top bound', () => {
+    it('cursor moves freely within viewport without scrolling', () => {
+      const view = new InlineDiffView(largeDiff);
+      
+      // Move cursor through the safe zone — no scrolling
+      // margin=4 with visibleHeight=10: safe zone is [4, 5] (indices within viewport)
+      // bottomBound = 0 + 10 - 1 - 4 = 5
+      view.scrollDown(5); // cursor at 5
+      view.render(80, 10);
+      expect(view.scrollOffset).toBe(0); // Still no scroll — cursor at boundary
+      expect(view.cursorLine).toBe(5);
+      
+      // One more step crosses the bottom margin — now viewport scrolls
+      view.scrollDown(1);
+      view.render(80, 10);
+      expect(view.cursorLine).toBe(6);
+      expect(view.scrollOffset).toBe(1); // Scrolled to maintain buffer
+    });
+
+    it('cursor can reach the very top and bottom of file', () => {
+      const view = new InlineDiffView(largeDiff);
+      
+      // At the top, cursor is at line 0 — no margin needed
+      expect(view.cursorLine).toBe(0);
+      view.render(80, 10);
+      expect(view.scrollOffset).toBe(0);
+      
+      // At the bottom
+      view.scrollToBottom();
+      view.render(80, 10);
+      expect(view.cursorLine).toBe(49);
+      // Viewport should show the last lines
+      expect(view.scrollOffset).toBe(40); // 50 - 10
+    });
+
+    it('scroll clamps cursor at top bound', () => {
       const view = new InlineDiffView(largeDiff);
       
       view.scrollUp(10); // Try to scroll past the top
-      expect(view.scrollOffset).toBe(0);
+      expect(view.cursorLine).toBe(0);
       
       const lines = view.render(80, 10);
       expect(lines[0]).toContain('line 1');
@@ -237,12 +282,12 @@ describe('InlineDiffView', () => {
       const view = new InlineDiffView(largeDiff);
       
       view.scrollDown(20);
+      view.render(80, 10);
       expect(view.scrollOffset).toBeGreaterThan(0);
       
       view.scrollToTop();
-      expect(view.scrollOffset).toBe(0);
-      
       const lines = view.render(80, 10);
+      expect(view.scrollOffset).toBe(0);
       expect(lines[0]).toContain('line 1');
     });
 
@@ -349,7 +394,8 @@ describe('InlineDiffView', () => {
       
       const view = new InlineDiffView(largeDiff);
       view.scrollDown(20);
-      expect(view.scrollOffset).toBe(20);
+      view.render(80, 10);
+      expect(view.scrollOffset).toBeGreaterThan(0);
       
       view.setDiff(simpleDiff);
       expect(view.scrollOffset).toBe(0);
@@ -595,7 +641,7 @@ describe('InlineDiffView', () => {
       expect(view.scrollOffset).toBeGreaterThan(0);
     });
 
-    it('moveCursor auto-scrolls up when cursor passes above visible area', () => {
+    it('moveCursor auto-scrolls when cursor enters margin zone', () => {
       const largeDiff: FileDiff = {
         filePath: 'large.ts',
         isNewFile: false,
@@ -611,23 +657,18 @@ describe('InlineDiffView', () => {
       
       const view = new InlineDiffView(largeDiff);
       
-      // Use scrollDown to move both cursor and scroll to line 20
+      // Move cursor to line 20 and render to establish viewport
       view.scrollDown(20);
-      expect(view.cursorLine).toBe(20);
-      expect(view.scrollOffset).toBe(20);
-      
-      view.render(80, 10); // visible area is lines 20-29
+      view.render(80, 10);
       
       // Move cursor up to line 10 (above visible area)
       view.moveCursor(-10);
-      
       expect(view.cursorLine).toBe(10);
-      // Before render, scroll offset hasn't changed yet
-      expect(view.scrollOffset).toBe(20);
       
-      // After render, scroll should auto-adjust to keep cursor visible
+      // After render, scroll should auto-adjust with margin
       view.render(80, 10);
-      expect(view.scrollOffset).toBe(10);
+      // Cursor at 10, margin 4 → scrollOffset = 10 - 4 = 6
+      expect(view.scrollOffset).toBe(6);
     });
 
     it('scrollDown moves cursor by same amount', () => {
@@ -647,15 +688,12 @@ describe('InlineDiffView', () => {
       const view = new InlineDiffView(largeDiff);
       
       expect(view.cursorLine).toBe(0);
-      expect(view.scrollOffset).toBe(0);
       
       view.scrollDown(5);
       expect(view.cursorLine).toBe(5);
-      expect(view.scrollOffset).toBe(5);
       
       view.scrollDown(10);
       expect(view.cursorLine).toBe(15);
-      expect(view.scrollOffset).toBe(15);
     });
 
     it('scrollUp moves cursor by same amount', () => {
@@ -676,15 +714,12 @@ describe('InlineDiffView', () => {
       
       view.scrollDown(20);
       expect(view.cursorLine).toBe(20);
-      expect(view.scrollOffset).toBe(20);
       
       view.scrollUp(5);
       expect(view.cursorLine).toBe(15);
-      expect(view.scrollOffset).toBe(15);
       
       view.scrollUp(10);
       expect(view.cursorLine).toBe(5);
-      expect(view.scrollOffset).toBe(5);
     });
 
     it('setDiff resets cursor to 0', () => {
@@ -714,12 +749,12 @@ describe('InlineDiffView', () => {
       const lines = view.render(80, 10);
       
       // The line at cursor position should have reverse video
-      expect(lines[1]).toContain('\x1b[48;5;236m'); // Dark gray background
+      expect(lines[1]).toContain('\x1b[48;5;238m'); // Dark gray background
       expect(lines[1]).toContain('\x1b[49m'); // Reset background
       
       // Other lines should not have reverse video
-      expect(lines[0]).not.toContain('\x1b[48;5;236m');
-      expect(lines[2]).not.toContain('\x1b[48;5;236m');
+      expect(lines[0]).not.toContain('\x1b[48;5;238m');
+      expect(lines[2]).not.toContain('\x1b[48;5;238m');
     });
 
     it('isSeparatorLine returns true for separator, false for hunk lines', () => {
@@ -855,12 +890,12 @@ describe('InlineDiffView', () => {
       const lines = view.render(80, 10);
       
       // Lines 1 and 2 should have reverse video
-      expect(lines[1]).toContain('\x1b[48;5;236m');
-      expect(lines[2]).toContain('\x1b[48;5;236m');
+      expect(lines[1]).toContain('\x1b[48;5;238m');
+      expect(lines[2]).toContain('\x1b[48;5;238m');
       
       // Lines outside the range should not
-      expect(lines[0]).not.toContain('\x1b[48;5;236m');
-      expect(lines[3]).not.toContain('\x1b[48;5;236m');
+      expect(lines[0]).not.toContain('\x1b[48;5;238m');
+      expect(lines[3]).not.toContain('\x1b[48;5;238m');
     });
 
     it('setDiff resets visual mode', () => {

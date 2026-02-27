@@ -252,7 +252,21 @@ export function createOverlayHandler(
       }
 
       // Normal diff view mode
+      // Ctrl+C or Escape exits visual mode; Escape closes overlay if not in visual mode
+      if (matchesKey(data, Key.ctrl("c"))) {
+        if (viewController?.isVisualMode) {
+          viewController.exitVisualMode();
+          tui.requestRender();
+        }
+        return;
+      }
+
       if (matchesKey(data, Key.escape)) {
+        if (viewController?.isVisualMode) {
+          viewController.exitVisualMode();
+          tui.requestRender();
+          return;
+        }
         done();
         return;
       }

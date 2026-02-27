@@ -153,11 +153,12 @@ describe('DiffViewController', () => {
       
       const controller = new DiffViewController(largeDiff);
       
-      controller.scrollDown(5);
-      expect(controller.scrollOffset).toBe(5);
+      controller.scrollDown(6);
+      expect(controller.cursorLine).toBe(6);
       
       const lines = controller.render(80, 10);
-      expect(lines[0]).toContain('line 6');
+      // Cursor at 6, margin 4 → scroll offset = 1
+      expect(lines[0]).toContain('line 2');
     });
 
     it('scrollUp delegates to inline view', () => {
@@ -178,7 +179,7 @@ describe('DiffViewController', () => {
       
       controller.scrollDown(10);
       controller.scrollUp(5);
-      expect(controller.scrollOffset).toBe(5);
+      expect(controller.cursorLine).toBe(5);
     });
 
     it('scrollToTop delegates to inline view', () => {
@@ -288,7 +289,8 @@ describe('DiffViewController', () => {
       
       const controller = new DiffViewController(largeDiff);
       controller.scrollDown(20);
-      expect(controller.scrollOffset).toBe(20);
+      controller.render(80, 10);
+      expect(controller.scrollOffset).toBeGreaterThan(0);
       
       controller.setDiff(simpleDiff);
       expect(controller.scrollOffset).toBe(0);
