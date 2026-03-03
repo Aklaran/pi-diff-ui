@@ -185,10 +185,12 @@ export class InlineDiffView {
       
       // Highlight cursor line or visual selection with subtle dark gray background
       if (inVisualRange || lineIndex === this._cursorLine) {
-        // Use 256-color dark gray background (238 = #444444) — visible but won't clash with syntax colors
-        // Wrap entire line: set bg at start, reset bg before final reset
-        content = content.replace(/\x1b\[0m$/, '\x1b[49m\x1b[0m');
-        content = `\x1b[48;5;238m${content}`;
+        // Cursor highlight: strip any existing background colors and apply a uniform one
+        // Use 256-color 240 (#585858) — bright enough to stand out over green/red diff backgrounds
+        content = content.replace(/\x1b\[48;5;\d+m/g, '');
+        content = content.replace(/\x1b\[49m/g, '');
+        content = content.replace(/\x1b\[0m/g, '\x1b[22m\x1b[39m');
+        content = `\x1b[48;5;240m${content}\x1b[0m`;
       }
       
       return this.truncateToWidth(content, width);
@@ -246,30 +248,40 @@ export class InlineDiffView {
     const lineNumStr = lineNumber.toString().padStart(lineNumberWidth, ' ');
 
     let prefix: string;
-    let color: string;
+    let gutterColor: string;
     let content = hunk.content;
+    let bgStart = '';
+    let bgEnd = '';
+
+    // Apply syntax highlighting to all line types
+    if (this.highlightFn) {
+      content = this.highlightFn(hunk.content, this.diff.filePath);
+    }
 
     switch (hunk.type) {
       case 'added':
         prefix = '+';
-        color = '\x1b[32m'; // Green
+        gutterColor = '\x1b[32m'; // Green prefix
+        // Subtle green background (256-color: 22 = dark green)
+        bgStart = '\x1b[48;5;22m';
+        bgEnd = '\x1b[49m';
         break;
       case 'removed':
         prefix = '-';
-        color = '\x1b[31m'; // Red
+        gutterColor = '\x1b[31m'; // Red prefix
+        // Subtle red background (256-color: 52 = dark red)
+        bgStart = '\x1b[48;5;52m';
+        bgEnd = '\x1b[49m';
         break;
       case 'context':
         prefix = ' ';
-        color = '\x1b[2m'; // Dim
-        // Apply syntax highlighting only to context lines
-        if (this.highlightFn) {
-          content = this.highlightFn(hunk.content, this.diff.filePath);
-        }
+        gutterColor = '\x1b[2m'; // Dim
         break;
     }
 
-    // Format: [dim line number] [color][prefix] [content][reset]
-    const fullContent = `${color}${lineNumStr} ${prefix} ${content}\x1b[0m`;
+    // Format: [bg][gutter color][line number prefix][reset gutter] [highlighted content][reset]
+    const gutter = `${gutterColor}${lineNumStr} ${prefix} \x1b[0m`;
+    const fullContent = `${bgStart}${gutter}${bgStart}${content}${bgEnd}\x1b[0m`;
     const rawContent = `${lineNumStr} ${prefix} ${hunk.content}`;
 
     return {

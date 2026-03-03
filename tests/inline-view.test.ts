@@ -45,14 +45,14 @@ describe('InlineDiffView', () => {
       expect(removedLine).toContain('\x1b[0m'); // Reset
     });
 
-    it('renders context lines with space prefix and dim color', () => {
+    it('renders context lines with space prefix and dim gutter', () => {
       const view = new InlineDiffView(simpleDiff);
       const lines = view.render(80, 10);
       
       const contextLine = lines.find(line => line.includes('line 1'));
       expect(contextLine).toBeDefined();
-      expect(contextLine).toContain('\x1b[2m'); // Dim
-      expect(contextLine).toMatch(/1\s+\s\s+line 1/); // Has line number and space prefix
+      expect(contextLine).toContain('\x1b[2m'); // Dim gutter
+      expect(contextLine).toContain('line 1');
     });
 
     it('line numbers are right-aligned', () => {
@@ -463,17 +463,18 @@ describe('InlineDiffView', () => {
       const view = new InlineDiffView(diff, highlightFn);
       const lines = view.render(80, 10);
       
-      // Should be called for 2 context lines, not the added line
-      expect(calls).toHaveLength(2);
+      // Should be called for all 3 lines (context + added)
+      expect(calls).toHaveLength(3);
       expect(calls[0]).toEqual({ code: 'const x = 1;', filePath: 'test.ts' });
-      expect(calls[1]).toEqual({ code: 'const z = 3;', filePath: 'test.ts' });
+      expect(calls[1]).toEqual({ code: 'const y = 2;', filePath: 'test.ts' });
+      expect(calls[2]).toEqual({ code: 'const z = 3;', filePath: 'test.ts' });
       
       // Context lines should include the highlighted content
       expect(lines[0]).toContain('HIGHLIGHTED:const x = 1;');
       expect(lines[2]).toContain('HIGHLIGHTED:const z = 3;');
     });
 
-    it('does not call highlightFn for added/removed lines', () => {
+    it('calls highlightFn for added/removed lines too', () => {
       const calls: string[] = [];
       const highlightFn = (code: string) => {
         calls.push(code);
@@ -492,10 +493,12 @@ describe('InlineDiffView', () => {
       };
       
       const view = new InlineDiffView(diff, highlightFn);
-      view.render(80, 10);
+      const lines = view.render(80, 10);
       
-      // Should not be called for added/removed lines
-      expect(calls).toHaveLength(0);
+      // Should be called for all lines
+      expect(calls).toHaveLength(2);
+      expect(lines[0]).toContain('HIGHLIGHTED:old line');
+      expect(lines[1]).toContain('HIGHLIGHTED:new line');
     });
 
     it('works without highlightFn', () => {
@@ -749,12 +752,12 @@ describe('InlineDiffView', () => {
       const lines = view.render(80, 10);
       
       // The line at cursor position should have reverse video
-      expect(lines[1]).toContain('\x1b[48;5;238m'); // Dark gray background
-      expect(lines[1]).toContain('\x1b[49m'); // Reset background
+      expect(lines[1]).toContain('\x1b[48;5;240m'); // Dark gray background
+      expect(lines[1]).toContain('\x1b[0m'); // Reset at end
       
       // Other lines should not have reverse video
-      expect(lines[0]).not.toContain('\x1b[48;5;238m');
-      expect(lines[2]).not.toContain('\x1b[48;5;238m');
+      expect(lines[0]).not.toContain('\x1b[48;5;240m');
+      expect(lines[2]).not.toContain('\x1b[48;5;240m');
     });
 
     it('isSeparatorLine returns true for separator, false for hunk lines', () => {
@@ -890,12 +893,12 @@ describe('InlineDiffView', () => {
       const lines = view.render(80, 10);
       
       // Lines 1 and 2 should have reverse video
-      expect(lines[1]).toContain('\x1b[48;5;238m');
-      expect(lines[2]).toContain('\x1b[48;5;238m');
+      expect(lines[1]).toContain('\x1b[48;5;240m');
+      expect(lines[2]).toContain('\x1b[48;5;240m');
       
       // Lines outside the range should not
-      expect(lines[0]).not.toContain('\x1b[48;5;238m');
-      expect(lines[3]).not.toContain('\x1b[48;5;238m');
+      expect(lines[0]).not.toContain('\x1b[48;5;240m');
+      expect(lines[3]).not.toContain('\x1b[48;5;240m');
     });
 
     it('setDiff resets visual mode', () => {

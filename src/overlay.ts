@@ -210,7 +210,7 @@ export function createOverlayHandler(
 
       // Help line (overwrite last empty line)
       if (fileList.length > 0 && !modal.isFilePickerOpen) {
-        const helpText = theme.fg("dim", "n/p files  d dismiss  Tab list  Ctrl+D/U scroll  y yank  V visual  Esc close");
+        const helpText = theme.fg("dim", "n/p files  d dismiss  Tab list  Ctrl+D/U scroll  y yank  V visual  q/Esc close");
         output[output.length - 1] = padLine(helpText);
       }
 
@@ -267,6 +267,11 @@ export function createOverlayHandler(
           tui.requestRender();
           return;
         }
+        done();
+        return;
+      }
+
+      if (data === "q") {
         done();
         return;
       }
