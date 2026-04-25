@@ -2,6 +2,8 @@
 
 Framework-agnostic diff rendering for TUI overlays. Provides the core diff engine, inline view, file picker, and modal overlay used by [Diff Review](https://github.com/Aklaran/pi-diff) and [Sirdar](https://github.com/Aklaran/sirdar)'s `review_agent`.
 
+> `pi-diff-ui` is a **library**, not a Pi extension. Do **not** place this repo under `~/.pi/agent/extensions` or list it in Pi's `settings.json -> extensions`; Pi will try to auto-load files like `src/index.ts` and `vitest.config.ts` as extensions.
+
 ## What It Does
 
 - **DiffEngine** — computes unified diffs between file snapshots
@@ -25,7 +27,7 @@ Consumer (Pi extension)
 ## Install
 
 ```bash
-# As a dependency in another Pi extension
+# As a dependency in another Pi package/extension
 pnpm add file:../pi-diff-ui
 
 # Or clone for development
